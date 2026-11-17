@@ -93,13 +93,27 @@ runs:
         # so both the preflight and the agent resolve it.
         host=${URL#*://}
         host=${host%%/*}
-        peer_ip=$(tailscale ip -4 "${PEER}" 2>/dev/null | head -1 || true)
-        if [[ -n ${peer_ip} ]]; then
-          echo "${peer_ip} ${host}" | sudo tee -a /etc/hosts >/dev/null
-          echo "preflight: mapped ${host} to ${peer_ip}"
-        else
-          echo "preflight: could not resolve ${PEER} through tailscaled; relying on DNS" >&2
+        peer_ip=$(
+          tailscale status --json 2>/dev/null \
+            | jq -r --arg peer "${PEER}" '
+                .Peer[]
+                | select(
+                    (.HostName == $peer)
+                    or (((.DNSName // "") | sub("\\.$"; "")) | startswith($peer + "."))
+                  )
+                | (.TailscaleIPs[] | select(test(":") | not))
+              ' 2>/dev/null | head -1 || true
+        )
+        if [[ -z ${peer_ip} ]]; then
+          peer_ip=$(tailscale ip -4 "${PEER}" 2>/dev/null | head -1 || true)
         fi
+        if [[ -z ${peer_ip} ]]; then
+          echo "::error::peer ${PEER} was not found in tailscale status; check the peer name and that it is online"
+          tailscale status 2>&1 | sed -n '1,20p' >&2 || true
+          exit 1
+        fi
+        echo "${peer_ip} ${host}" | sudo tee -a /etc/hosts >/dev/null
+        echo "preflight: mapped ${host} to ${peer_ip}"
         for attempt in $(seq 1 12); do
           if body=$(curl -fsS --max-time 10 "${URL}/models"); then
             if jq -e --arg model "${MODEL}" '[.data[].id] | index($model) != null' <<<"${body}" >/dev/null; then
