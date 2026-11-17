@@ -50,7 +50,7 @@
 - [x] 6.4 Update `AGENTS.md` and `README.md` so the factory is the documented default feature workflow, the PR-based deviation from direct-to-main is explicit, and the derived-repo setup lists the Tailscale WIF client ID/audience, ACL, labels, and branch protection; verify `just ci` passes in `base` and `openspec validate --all` passes.
 - [ ] 6.5 Verify the security boundaries with a scratch run: the agent has no GitHub token, no `gh`, no persisted checkout credential, no raw network client, and no dangerous MCP tool; verify each attempted escape is denied and reported.
 - [x] 6.6 Verify `just ci` in the scratch derived repository runs `fmt`, `lint`, `build`, `test`, and `spec-validate`, and that the template's `base` `ci` still runs only `check-template`.
-- [ ] 6.7 Switch Tailscale authentication to GitHub WIF: grant `id-token: write` on phase jobs, exchange the OIDC token through a federated identity, remove `TS_OAUTH_SECRET`, add the dispatch smoke workflow, and verify the smoke run completes a one-token preflight with `deepseek-v4.1-flash`.
+- [x] 6.7 Switch Tailscale authentication to GitHub WIF: grant `id-token: write` on phase jobs, exchange the OIDC token through a federated identity, remove `TS_OAUTH_SECRET`, add the dispatch smoke workflow, and verify the smoke run completes a one-token preflight with `deepseek-v4.1-flash`.
 
 ## Workflow follow-up
 

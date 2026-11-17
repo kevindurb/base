@@ -130,7 +130,7 @@ runs:
             fi
             echo "preflight: HTTP ${code} from ${URL}/chat/completions: ${body:0:300}" >&2
             if [[ $code == 403 ]]; then
-              echo "preflight: Aperture denied the CI identity; give tag:ci a base role and model access. A tag-only node needs the explicit role." >&2
+              echo "preflight: Aperture denied the CI identity; give tag:ci a base role and model access in the tailnet policy. A tag-only node needs the explicit role." >&2
             fi
           else
             echo "preflight: endpoint unreachable (attempt ${attempt})" >&2

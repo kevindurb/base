@@ -16,8 +16,9 @@ no server, database, or long-running process. The relevant constraints are:
 - GitHub-hosted runners are ephemeral, have outbound network only, and start
   without the OpenSpec or OpenCode CLIs.
 - The Aperture host is reachable only through Tailscale, authorizes requests
-  by tailnet identity, a base role for tag-only nodes, and model/MCP grants,
-  and serves an OpenAI-compatible model plus an MCP endpoint.
+  by tailnet identity, and depends on the tailnet policy for the base role plus
+  model/MCP capabilities. It serves an OpenAI-compatible model plus an MCP
+  endpoint.
 - No available third-party OpenCode action runs OpenCode V2 for general phase
   work; the factory uses its own composite action with a pinned,
   checksum-verified OpenCode binary.
@@ -211,9 +212,9 @@ setup); copying the workflows into each project (drift).
   no GitHub token in the agent, control-plane deny, untrusted delimiters, and
   human review of the final diff.
 - **The MCP is reachable by the CI grant and includes `TailnetSSH_run_command`
-  and Chrome** → the tailnet ACL limits `tag:ci` to the host on 443, the
-  Aperture grant covers only the model and MCP endpoints, agents deny those
-  tools, apply and revise get no MCP, and shell egress is denied.
+  and Chrome** → the tailnet policy limits `tag:ci` to the host on 443, grants
+  only the model and MCP capabilities, agents deny those tools, apply and
+  revise get no MCP, and shell egress is denied.
 - **Five human actions may feel heavy** → the work is automated; the gates are
   the point. If it is too much later, the archive label and merge are the first
   to collapse, not the proposal merge.

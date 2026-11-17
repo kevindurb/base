@@ -70,12 +70,13 @@ three pull requests: proposal, implementation, archive.
    as `GITHUB_TOKEN`, because a process that can mint an OIDC token can join
    the tailnet without the MCP permission boundary. Keep `id-token: write` on
    the phase job, not the whole workflow. The tailnet ACL only makes the host
-   reachable; a tag-only `tag:ci` identity also needs an explicit Aperture base
-   role plus model access. Without the role, `/api/wif/claims` and the model
-   endpoints return 403 `access denied: no role granted`. User-owned devices
-   can inherit a role through their user/group, so a working user device or PR
-   agent does not prove a tag-only node has one. The smoke preflight uses a
-   one-token chat completion rather than the role-gated catalog.
+   reachable; a tag-only `tag:ci` identity also needs the tailnet policy's
+   Aperture app capability with `role: user` plus model access. Without the
+   role, `/api/wif/claims` and the model endpoints return 403
+   `access denied: no role granted`. The working `tag:pr-agent` grant shows the
+   shape; the Aperture gateway config is a second source, so the policy is the
+   reviewable source of the role. The smoke preflight uses a one-token chat
+   completion rather than the role-gated catalog.
 
 ## Where the contracts live
 

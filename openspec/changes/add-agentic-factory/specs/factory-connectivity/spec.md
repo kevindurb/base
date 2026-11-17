@@ -117,12 +117,12 @@ The factory SHALL authenticate to Tailscale with a short-lived GitHub OIDC token
 
 #### Scenario: Role required for a tag
 
-- **WHEN** the `tag:ci` identity has model access but no base role
+- **WHEN** the tailnet policy gives `tag:ci` model access but no base role
 - **THEN** `/api/wif/claims` and the model endpoint return 403 `access denied: no role granted` and the preflight stops before the agent starts
 
 #### Scenario: Role and model grant
 
-- **WHEN** the `tag:ci` grant includes `role: user` and model access
+- **WHEN** the tailnet policy's `tag:ci` app capability includes `role: user` and model access
 - **THEN** the preflight completion succeeds and no model API key is stored or passed
 
 ### Requirement: CI access is least-privileged

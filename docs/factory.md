@@ -38,32 +38,20 @@ anything larger before applying a command.
    `TS_CLIENT_ID`; add `TS_AUDIENCE` only if your identity uses a custom
    audience (otherwise the action derives `api.tailscale.com/<client-id>`).
    These values are not secrets. Do not create `TS_OAUTH_SECRET`; delete it if
-   it exists. No model API key is needed when Aperture grants the CI identity a
-   base role and model access.
-4. **Grant the CI tag access in the tailnet ACL** to the Aperture host on
-   HTTPS only. For example, if the Aperture host has `tag:ai`:
-   ```json
-   "grants": [
-     { "src": ["tag:ci"], "dst": ["tag:ai"], "ip": ["tcp:443"] }
-   ]
-   ```
-   Replace `tag:ai` with the Aperture host's tag, or use `ai` as the
-   destination if your policy uses hostnames. Do not grant SSH or any other
-   tailnet host. Tailscale trims the netmap, so without this grant the runner
-   will not even see `ai` in `tailscale status`. The workflows use
-   `https://ai.beaver-cloud.ts.net/v1` and
-   `https://ai.beaver-cloud.ts.net/v1/mcp`.
-5. **Grant the CI identity a base role and model access in Aperture.** The CI
-   node is tag-only (`tag:ci`), so Aperture's gateway needs an explicit base
-   role; a user-owned device can inherit a role through its user/group (or an
-   API key), which is why a PR agent can work without a tag role. Add both
-   capabilities to the existing `tag:ci` grant:
+   it exists. No model API key is needed when the tailnet policy grants the CI
+   identity a base role and model access.
+4. **Grant the CI tag access in the tailnet policy.** The CI tag needs both
+   network reachability and the Aperture app capability in the same grant. In
+   this environment the policy is `tailnet/policy.hujson` in the infra repo;
+   add:
    ```json
    {
      "src": ["tag:ci"],
+     "dst": ["tag:ai"],
+     "ip":  ["tcp:443"],
      "app": {
        "tailscale.com/cap/aperture": [
-         { "role": "user" },
+         { "role": "user", "enable_portal": false },
          {
            "models": "*/deepseek-v4.1-flash",
            "quotas": [{ "bucket": "ci-agents" }]
@@ -72,28 +60,35 @@ anything larger before applying a command.
      }
    }
    ```
-   Without a base role, `/api/wif/claims` and the model endpoints return
+   Replace `tag:ai` with the Aperture host's tag, or use `ai` as the
+   destination if your policy uses hostnames. Do not grant SSH or any other
+   tailnet host. Tailscale trims the netmap, so without the network grant the
+   runner will not even see `ai` in `tailscale status`. The role and model
+   capability belong in this policy grant, not only in the Aperture gateway
+   config; Aperture combines both sources, and the policy keeps the role
+   reviewable in git. Update the policy's `tag:ci` test to accept `tag:ai:443`
+   instead of denying it. Without the base role, `/api/wif/claims` and the model
+   endpoints return
    `403 {"error":{"message":"access denied: no role granted"}}`. The role and
    model access are separate. If propose or verify use MCP web tools, also
    grant the read-only web connectors (for example `aperture_web_search` and
-   `aperture_web_fetch`; use the names shown by Aperture). Save the config on
-   the Aperture **Configuration** page.
-6. **Protect `main`**: require a pull request and the `CI` check before
+   `aperture_web_fetch`; use the names shown by Aperture).
+5. **Protect `main`**: require a pull request and the `CI` check before
    merging. Do not let workflows push to `main`; the factory pushes only phase
    branches and opens PRs.
-7. **Allow GitHub Actions to create pull requests** in the repository
+6. **Allow GitHub Actions to create pull requests** in the repository
    settings. The workflows use `GITHUB_TOKEN` with `pull-requests: write`;
    they never approve or merge.
-8. **Run the smoke workflow** (`Actions → OpenSpec smoke → Run workflow`). It
+7. **Run the smoke workflow** (`Actions → OpenSpec smoke → Run workflow`). It
    prints the non-secret `iss`, `aud`, `sub`, `repository`, `ref`,
    `event_name`, and `workflow` claims, exchanges the GitHub OIDC token for a
    short-lived Tailscale credential, joins as `tag:ci`, makes a one-token chat
    completion with `deepseek-v4.1-flash`, and stops before installing or
    running the agent. If the exchange is rejected, match the federated
    identity's subject to the printed `sub` prefix. If the preflight fails after
-   the node joins, check the ACL, the Aperture role/model grant, and the
-   `/etc/hosts` mapping described below.
-9. **Add `spec-validate` to `just ci`** once the project has real checks:
+   the node joins, check the tailnet ACL, the policy's role/model capability,
+   and the `/etc/hosts` mapping described below.
+8. **Add `spec-validate` to `just ci`** once the project has real checks:
    `ci: pre-commit pre-push spec-validate`. The template's own `ci` stays
    `check-template`, because `base` has no application to build or test.
 
@@ -335,7 +330,7 @@ just ci
 After the WIF setup, run the **OpenSpec smoke** workflow. It exchanges the
 OIDC token, joins as `tag:ci`, makes a one-token completion with the configured
 model, and stops before installing or running the agent. A failure there is a
-federated identity, audience, variable, ACL, or Aperture role/model-grant
+federated identity, audience, variable, ACL, or tailnet policy role/model-grant
 problem, not a model problem.
 
 The propose agent can be smoke-tested locally with a hand-written
