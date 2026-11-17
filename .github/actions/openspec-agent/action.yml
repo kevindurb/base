@@ -108,7 +108,7 @@ runs:
           peer_ip=$(tailscale ip -4 "${PEER}" 2>/dev/null | head -1 || true)
         fi
         if [[ -z ${peer_ip} ]]; then
-          echo "::error::peer ${PEER} was not found in tailscale status; check the peer name and that it is online"
+          echo "::error::peer ${PEER} was not found in tailscale status. Ensure the tag:ci ACL grants tcp:443 to the peer's tag and the peer is online."
           tailscale status 2>&1 | sed -n '1,20p' >&2 || true
           exit 1
         fi

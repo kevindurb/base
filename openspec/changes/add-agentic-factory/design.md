@@ -231,6 +231,10 @@ setup); copying the workflows into each project (drift).
 - **WIF subject, audience, or `id-token: write` misconfiguration** → the
   Tailscale action fails before the agent starts; the dispatch smoke workflow
   surfaces the exchange and model-preflight failure without a model call.
+- **Netmap trimming hides the Aperture host when the ACL lacks a `tag:ci`
+  grant** → the runner cannot even see `ai` in `tailscale status`; add the
+  `tag:ci` → `tag:ai` `tcp:443` grant and treat the smoke preflight as the
+  setup check.
 - **Tailscale or Aperture outage** → preflight fails fast, the phase becomes
   `opsx:blocked`, and re-applying the command retries.
 - **The template's `just` stubs block end-to-end testing in `base`** → test in a

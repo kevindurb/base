@@ -40,9 +40,18 @@ anything larger before applying a command.
    These values are not secrets. Do not create `TS_OAUTH_SECRET`; delete it if
    it exists. There is no model API key: the Aperture endpoint is
    unauthenticated on the tailnet.
-4. **Restrict the CI tag in the tailnet ACL** to the Aperture host on HTTPS:
-   `tag:ci` may reach `ai` on port 443 only, with no SSH and no other tailnet
-   host. The workflows use `https://ai.beaver-cloud.ts.net/v1` and
+4. **Grant the CI tag access in the tailnet ACL** to the Aperture host on
+   HTTPS only. For example, if the Aperture host has `tag:ai`:
+   ```json
+   "grants": [
+     { "src": ["tag:ci"], "dst": ["tag:ai"], "ip": ["tcp:443"] }
+   ]
+   ```
+   Replace `tag:ai` with the Aperture host's tag, or use `ai` as the
+   destination if your policy uses hostnames. Do not grant SSH or any other
+   tailnet host. Tailscale trims the netmap, so without this grant the runner
+   will not even see `ai` in `tailscale status`. The workflows use
+   `https://ai.beaver-cloud.ts.net/v1` and
    `https://ai.beaver-cloud.ts.net/v1/mcp`.
 5. **Protect `main`**: require a pull request and the `CI` check before
    merging. Do not let workflows push to `main`; the factory pushes only phase

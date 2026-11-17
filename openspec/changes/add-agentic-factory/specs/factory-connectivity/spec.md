@@ -133,3 +133,8 @@ The factory's CI tag SHALL be allowed to reach only the model and MCP host on th
 
 - **WHEN** the CI node attempts another tailnet host or port
 - **THEN** the connection is denied
+
+#### Scenario: Peer visibility
+
+- **WHEN** the tailnet ACL lacks a grant from `tag:ci` to the AI host
+- **THEN** Tailscale's netmap trimming omits the host from the runner's `tailscale status` and the preflight fails before the model call
