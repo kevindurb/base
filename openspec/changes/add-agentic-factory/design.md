@@ -16,8 +16,8 @@ no server, database, or long-running process. The relevant constraints are:
 - GitHub-hosted runners are ephemeral, have outbound network only, and start
   without the OpenSpec or OpenCode CLIs.
 - The Aperture host is reachable only through Tailscale, authorizes requests
-  by tailnet identity and model/MCP grants, and serves an OpenAI-compatible
-  model plus an MCP endpoint.
+  by tailnet identity, a base role for tag-only nodes, and model/MCP grants,
+  and serves an OpenAI-compatible model plus an MCP endpoint.
 - No available third-party OpenCode action runs OpenCode V2 for general phase
   work; the factory uses its own composite action with a pinned,
   checksum-verified OpenCode binary.

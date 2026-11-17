@@ -38,8 +38,8 @@ anything larger before applying a command.
    `TS_CLIENT_ID`; add `TS_AUDIENCE` only if your identity uses a custom
    audience (otherwise the action derives `api.tailscale.com/<client-id>`).
    These values are not secrets. Do not create `TS_OAUTH_SECRET`; delete it if
-   it exists. No model API key is needed when Aperture grants the CI identity
-   model access.
+   it exists. No model API key is needed when Aperture grants the CI identity a
+   base role and model access.
 4. **Grant the CI tag access in the tailnet ACL** to the Aperture host on
    HTTPS only. For example, if the Aperture host has `tag:ai`:
    ```json
@@ -53,13 +53,17 @@ anything larger before applying a command.
    will not even see `ai` in `tailscale status`. The workflows use
    `https://ai.beaver-cloud.ts.net/v1` and
    `https://ai.beaver-cloud.ts.net/v1/mcp`.
-5. **Grant the CI identity model access in Aperture.** Mirror the working
-   `tag:pr-agent` grant for `tag:ci`:
+5. **Grant the CI identity a base role and model access in Aperture.** The CI
+   node is tag-only (`tag:ci`), so Aperture's gateway needs an explicit base
+   role; a user-owned device can inherit a role through its user/group (or an
+   API key), which is why a PR agent can work without a tag role. Add both
+   capabilities to the existing `tag:ci` grant:
    ```json
    {
      "src": ["tag:ci"],
      "app": {
        "tailscale.com/cap/aperture": [
+         { "role": "user" },
          {
            "models": "*/deepseek-v4.1-flash",
            "quotas": [{ "bucket": "ci-agents" }]
@@ -68,12 +72,12 @@ anything larger before applying a command.
      }
    }
    ```
-   The catalog endpoint `/v1/models` is role-gated, so the smoke preflight uses
-   a one-token chat completion instead; model access is sufficient for chat.
-   No model API key or `role` is needed for model calls. If propose or verify
-   use MCP web tools, also grant the read-only web connectors (for example
-   `aperture_web_search` and `aperture_web_fetch`; use the names shown by
-   Aperture). Save the config on the Aperture **Configuration** page.
+   Without a base role, `/api/wif/claims` and the model endpoints return
+   `403 {"error":{"message":"access denied: no role granted"}}`. The role and
+   model access are separate. If propose or verify use MCP web tools, also
+   grant the read-only web connectors (for example `aperture_web_search` and
+   `aperture_web_fetch`; use the names shown by Aperture). Save the config on
+   the Aperture **Configuration** page.
 6. **Protect `main`**: require a pull request and the `CI` check before
    merging. Do not let workflows push to `main`; the factory pushes only phase
    branches and opens PRs.
@@ -87,8 +91,8 @@ anything larger before applying a command.
    completion with `deepseek-v4.1-flash`, and stops before installing or
    running the agent. If the exchange is rejected, match the federated
    identity's subject to the printed `sub` prefix. If the preflight fails after
-   the node joins, check the ACL, the Aperture model grant, and the `/etc/hosts`
-   mapping described below.
+   the node joins, check the ACL, the Aperture role/model grant, and the
+   `/etc/hosts` mapping described below.
 9. **Add `spec-validate` to `just ci`** once the project has real checks:
    `ci: pre-commit pre-push spec-validate`. The template's own `ci` stays
    `check-template`, because `base` has no application to build or test.
@@ -331,8 +335,8 @@ just ci
 After the WIF setup, run the **OpenSpec smoke** workflow. It exchanges the
 OIDC token, joins as `tag:ci`, makes a one-token completion with the configured
 model, and stops before installing or running the agent. A failure there is a
-federated identity, audience, variable, ACL, or Aperture model-grant problem,
-not a model problem.
+federated identity, audience, variable, ACL, or Aperture role/model-grant
+problem, not a model problem.
 
 The propose agent can be smoke-tested locally with a hand-written
 `.agent/context.md` and an ephemeral node, or by running the same command from

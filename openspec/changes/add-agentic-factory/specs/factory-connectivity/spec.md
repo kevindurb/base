@@ -115,15 +115,15 @@ The factory SHALL authenticate to Tailscale with a short-lived GitHub OIDC token
 - **WHEN** the workflow does not grant `id-token: write`
 - **THEN** the phase stops before the agent starts and reports the connectivity failure
 
-#### Scenario: Model grant
+#### Scenario: Role required for a tag
 
-- **WHEN** Aperture grants the `tag:ci` identity access to the configured model
+- **WHEN** the `tag:ci` identity has model access but no base role
+- **THEN** `/api/wif/claims` and the model endpoint return 403 `access denied: no role granted` and the preflight stops before the agent starts
+
+#### Scenario: Role and model grant
+
+- **WHEN** the `tag:ci` grant includes `role: user` and model access
 - **THEN** the preflight completion succeeds and no model API key is stored or passed
-
-#### Scenario: Missing model access
-
-- **WHEN** the `tag:ci` identity lacks model access
-- **THEN** the preflight receives 403 and stops before the agent starts
 
 ### Requirement: CI access is least-privileged
 
