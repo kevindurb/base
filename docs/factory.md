@@ -54,10 +54,24 @@ anything larger before applying a command.
    `https://ai.beaver-cloud.ts.net/v1` and
    `https://ai.beaver-cloud.ts.net/v1/mcp`.
 5. **Grant the CI identity a role in Aperture.** Aperture authorizes requests
-   by tailnet identity. Add `tag:ci` to the role that can call `/v1/models`,
-   chat completions, and the MCP endpoint, or configure an API key for that
-   role. Without a role, `/v1/models` returns
-   `403 {"error":{"message":"access denied: no role granted"}}`.
+   by tailnet identity, and `/v1/models` requires a `role` capability in
+   addition to model access. In Aperture's `grants`, add `{"role": "user"}` to
+   the `tag:ci` source; model access alone returns
+   `403 {"error":{"message":"access denied: no role granted"}}`:
+   ```json
+   {
+     "src": ["tag:ci"],
+     "app": {
+       "tailscale.com/cap/aperture": [
+         { "role": "user" },
+         { "models": "**/**" }
+       ]
+     }
+   }
+   ```
+   Keep the existing model/quota grant for the specific model. Save the config
+   on the Aperture **Configuration** page. No model API key is needed when the
+   role is granted.
 6. **Protect `main`**: require a pull request and the `CI` check before
    merging. Do not let workflows push to `main`; the factory pushes only phase
    branches and opens PRs.
