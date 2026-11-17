@@ -115,12 +115,15 @@ runs:
         echo "${peer_ip} ${host}" | sudo tee -a /etc/hosts >/dev/null
         echo "preflight: mapped ${host} to ${peer_ip}"
         for attempt in $(seq 1 12); do
-          if body=$(curl -fsS --max-time 10 "${URL}/models"); then
-            if jq -e --arg model "${MODEL}" '[.data[].id] | index($model) != null' <<<"${body}" >/dev/null; then
+          if response=$(curl -sS --max-time 10 -w '\n%{http_code}' "${URL}/models"); then
+            code=${response##*$'\n'}
+            body=${response%$'\n'*}
+            if [[ $code == 200 ]] \
+              && jq -e --arg model "${MODEL}" '[.data[].id] | index($model) != null' <<<"${body}" >/dev/null; then
               echo "preflight: ${MODEL} is listed by ${URL}"
               exit 0
             fi
-            echo "preflight: endpoint responded but ${MODEL} is missing (attempt ${attempt})" >&2
+            echo "preflight: HTTP ${code} from ${URL}/models: ${body:0:300}" >&2
           else
             echo "preflight: endpoint unreachable (attempt ${attempt})" >&2
           fi
