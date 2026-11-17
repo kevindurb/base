@@ -115,10 +115,15 @@ The factory SHALL authenticate to Tailscale with a short-lived GitHub OIDC token
 - **WHEN** the workflow does not grant `id-token: write`
 - **THEN** the phase stops before the agent starts and reports the connectivity failure
 
-#### Scenario: No model key
+#### Scenario: Role grant
 
-- **WHEN** the private endpoint is unauthenticated on the tailnet
+- **WHEN** Aperture grants the `tag:ci` identity a role
 - **THEN** no model API key is stored or passed
+
+#### Scenario: Missing role
+
+- **WHEN** the `tag:ci` identity has no Aperture role
+- **THEN** the preflight receives 403 `access denied: no role granted` and stops before the agent starts
 
 ### Requirement: CI access is least-privileged
 

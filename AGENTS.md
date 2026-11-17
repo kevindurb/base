@@ -106,11 +106,11 @@ the control plane:
 
 The factory is PR-based by design, for feature work only. It is opt-in for
 existing repositories; new repositories from this template inherit it. Setup —
-labels, the Tailscale WIF client ID/audience, the tailnet ACL, and branch
-protection — is in `docs/factory.md`. The agent never has a GitHub token or an
-OIDC token and cannot edit the factory's own control plane. Tailscale access
-uses a GitHub OIDC token exchanged through a federated identity
-(`id-token: write`); there is no long-lived Tailscale secret.
+labels, the Tailscale WIF client ID/audience, the tailnet ACL, the Aperture
+role, and branch protection — is in `docs/factory.md`. The agent never has a
+GitHub token or an OIDC token and cannot edit the factory's own control plane.
+Tailscale access uses a GitHub OIDC token exchanged through a federated
+identity (`id-token: write`); there is no long-lived Tailscale secret.
 
 ## Workflow
 

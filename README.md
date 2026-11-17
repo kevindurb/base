@@ -50,6 +50,8 @@ template. See [`docs/factory.md`](docs/factory.md).
      audience); use the `sub` prefix printed by the smoke workflow as the
      identity subject; do not create `TS_OAUTH_SECRET`;
    - permit `tag:ci` to reach the Aperture host on port 443 only;
+   - grant the `tag:ci` identity an Aperture role for `/v1/models`, chat, and
+     MCP;
    - protect `main` with a required PR and the `CI` check;
    - allow GitHub Actions to create pull requests;
    - run the **OpenSpec smoke** workflow to verify the OIDC exchange and model

@@ -86,9 +86,9 @@ None. The project has no existing specs; this is a new set of capabilities.
   `just ci` and adopt branch protection.
 - New repository configuration for Tailscale WIF: the federated identity
   client ID and, when the generated audience is not used, its audience. The
-  phase jobs grant `id-token: write`; no long-lived Tailscale secret or model
-  API key is required while the Aperture endpoint is tailnet-only and
-  unauthenticated.
+  phase jobs grant `id-token: write`; no long-lived Tailscale secret is
+  required. Aperture authorizes the `tag:ci` identity by role, so no model API
+  key is needed when that role is granted.
 - New CI dependencies: the OpenSpec CLI and a pinned OpenCode binary, installed
   by the repository's own composite action. The template's application `just`
   stubs remain unchanged until a derived project fills them in.

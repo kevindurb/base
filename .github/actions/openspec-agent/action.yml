@@ -124,6 +124,9 @@ runs:
               exit 0
             fi
             echo "preflight: HTTP ${code} from ${URL}/models: ${body:0:300}" >&2
+            if [[ $code == 403 ]] && grep -q 'no role granted' <<<"${body}"; then
+              echo "preflight: Aperture has no role for this tailnet identity; grant tag:ci a role or provide an API key." >&2
+            fi
           else
             echo "preflight: endpoint unreachable (attempt ${attempt})" >&2
           fi
