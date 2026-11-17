@@ -86,6 +86,16 @@ The factory SHALL provide a dispatchable smoke workflow that joins the tailnet a
 - **WHEN** a maintainer dispatches the smoke workflow
 - **THEN** it exchanges the GitHub OIDC token, joins as `tag:ci`, lists the configured model, and stops before the agent starts
 
+#### Scenario: Claims visible
+
+- **WHEN** the smoke workflow runs
+- **THEN** it prints the non-secret `iss`, `aud`, `sub`, `repository`, `ref`, `event_name`, and `workflow` claims without printing the token
+
+#### Scenario: Immutable subject
+
+- **WHEN** GitHub issues an immutable OIDC subject containing the owner and repository IDs
+- **THEN** the federated identity's subject matches that exact prefix and the smoke exchange succeeds
+
 ### Requirement: Credentials are isolated from the agent
 
 The factory SHALL authenticate to Tailscale with a short-lived GitHub OIDC token exchanged through a federated identity and SHALL NOT store a long-lived Tailscale credential. It SHALL NOT expose the OIDC request variables or the federated identity configuration to the agent step.

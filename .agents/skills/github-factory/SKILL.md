@@ -63,7 +63,9 @@ three pull requests: proposal, implementation, archive.
 9. **Tailscale uses WIF, not a stored secret.** The phase job grants
    `id-token: write`, the Tailscale step exchanges a short-lived GitHub OIDC
    token through a federated identity, and the repository stores only the
-   non-secret client ID and audience. The agent step must unset
+   non-secret client ID and audience. Match the federated identity's subject to
+   the exact `sub` prefix the smoke workflow prints, including GitHub's
+   immutable owner/repository IDs. The agent step must unset
    `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` as well
    as `GITHUB_TOKEN`, because a process that can mint an OIDC token can join
    the tailnet without the MCP permission boundary. Keep `id-token: write` on

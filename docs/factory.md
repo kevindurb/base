@@ -29,13 +29,17 @@ anything larger before applying a command.
 3. **Create a Tailscale federated identity** for GitHub Actions WIF. In the
    Tailscale admin console, open **Trust credentials → Credential → OpenID
    Connect**, choose the GitHub Actions issuer (`https://token.actions.githubusercontent.com`),
-   set the subject to `repo:OWNER/NAME:*`, grant the `auth_keys` scope, and
-   allow `tag:ci`. Copy the **Client ID** and **Audience**. Then add the
-   repository variable `TS_CLIENT_ID`; add `TS_AUDIENCE` only if your identity
-   uses a custom audience (otherwise the action derives
-   `api.tailscale.com/<client-id>`). These values are not secrets. Do not create
-   `TS_OAUTH_SECRET`; delete it if it exists. There is no model API key: the
-   Aperture endpoint is unauthenticated on the tailnet.
+   and set the subject to the exact `sub` prefix printed by the smoke workflow,
+   with a wildcard for the ref. GitHub may issue either
+   `repo:OWNER/NAME:*` or an immutable subject such as
+   `repo:OWNER@OWNER_ID/NAME@REPO_ID:*`; copy the prefix the smoke run shows
+   rather than guessing. Grant the `auth_keys` scope and allow `tag:ci`. Copy
+   the **Client ID** and **Audience**. Then add the repository variable
+   `TS_CLIENT_ID`; add `TS_AUDIENCE` only if your identity uses a custom
+   audience (otherwise the action derives `api.tailscale.com/<client-id>`).
+   These values are not secrets. Do not create `TS_OAUTH_SECRET`; delete it if
+   it exists. There is no model API key: the Aperture endpoint is
+   unauthenticated on the tailnet.
 4. **Restrict the CI tag in the tailnet ACL** to the Aperture host on HTTPS:
    `tag:ci` may reach `ai` on port 443 only, with no SSH and no other tailnet
    host. The workflows use `https://ai.beaver-cloud.ts.net/v1` and
@@ -47,10 +51,13 @@ anything larger before applying a command.
    settings. The workflows use `GITHUB_TOKEN` with `pull-requests: write`;
    they never approve or merge.
 7. **Run the smoke workflow** (`Actions → OpenSpec smoke → Run workflow`). It
-   exchanges the GitHub OIDC token for a short-lived Tailscale credential,
-   joins as `tag:ci`, checks that `/v1/models` lists `deepseek-v4.1-flash`, and
-   stops before a model call. Fix the federated identity before starting a
-   real propose run if the smoke job fails.
+   prints the non-secret `iss`, `aud`, `sub`, `repository`, `ref`,
+   `event_name`, and `workflow` claims, exchanges the GitHub OIDC token for a
+   short-lived Tailscale credential, joins as `tag:ci`, checks that
+   `/v1/models` lists `deepseek-v4.1-flash`, and stops before a model call. If
+   the exchange is rejected, match the federated identity's subject to the
+   printed `sub` prefix. If the preflight fails after the node joins, check the
+   ACL and the `/etc/hosts` mapping described below.
 8. **Add `spec-validate` to `just ci`** once the project has real checks:
    `ci: pre-commit pre-push spec-validate`. The template's own `ci` stays
    `check-template`, because `base` has no application to build or test.
@@ -64,7 +71,10 @@ The phase jobs grant `id-token: write`; the agent step unsets
 `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN`, so the
 model never receives the OIDC request variables. The Tailscale step uses the
 federated identity client ID and audience, exchanges the OIDC token, and
-creates an ephemeral node.
+creates an ephemeral node. The preflight maps the Aperture FQDN to the peer's
+tailnet IP in `/etc/hosts`, because GitHub runners do not always wire MagicDNS
+into systemd-resolved; that mapping also lets the agent resolve the provider
+and MCP endpoints.
 
 The same identity can be created with the Tailscale Terraform provider:
 
@@ -74,16 +84,21 @@ resource "tailscale_federated_identity" "factory" {
   scopes      = ["auth_keys"]
   tags        = ["tag:ci"]
   issuer      = "https://token.actions.githubusercontent.com"
-  subject     = "repo:OWNER/NAME:*"
+  # Replace with the exact `sub` prefix printed by the smoke workflow.
+  subject     = "repo:OWNER@OWNER_ID/NAME@REPO_ID:*"
 }
 ```
 
-The `repo:OWNER/NAME:*` subject covers default-branch runs (`issues`,
-`issue_comment`, `workflow_dispatch`) and `pull_request` runs. For a tighter
-policy, use two identities with subjects
-`repo:OWNER/NAME:ref:refs/heads/main` and `repo:OWNER/NAME:pull_request`, and
-give each one its own client ID. A custom claim matching `repository` can be
-added as defense in depth.
+Use the `sub` prefix from the smoke workflow's claims output, followed by
+`:*`. GitHub's immutable subject form includes the owner and repository IDs,
+so the prefix can look like
+`repo:kevindurb@2565006/base@1448466354`; a plain `repo:OWNER/NAME:*` works only
+when GitHub emits that shorter form. The prefix printed by the smoke run is
+authoritative. It covers default-branch runs (`issues`, `issue_comment`,
+`workflow_dispatch`) and `pull_request` runs. For a tighter policy, use two
+identities with subjects `<prefix>:ref:refs/heads/main` and
+`<prefix>:pull_request`, and give each one its own client ID. A custom claim
+matching `repository` can be added as defense in depth.
 
 If your global OpenCode configuration pins a different provider ID or denies
 other providers, allow `aperture` in that policy before running the propose

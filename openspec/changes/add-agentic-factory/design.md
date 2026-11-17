@@ -172,7 +172,7 @@ before review, and a revise after that is awkward).
 
 Each workflow that needs the model joins the tailnet as an ephemeral `tag:ci`
 node using a short-lived GitHub OIDC token exchanged through a Tailscale
-federated identity (WIF), pings the host, and preflights
+federated identity (WIF), preflights the host, and checks
 `https://ai.beaver-cloud.ts.net/v1/models` with bounded retries. The phase job
 grants `id-token: write`; the agent step unsets the OIDC request variables and
 never receives a token. The provider is the OpenAI-compatible endpoint with

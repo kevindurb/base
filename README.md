@@ -47,7 +47,8 @@ template. See [`docs/factory.md`](docs/factory.md).
    - run `scripts/factory-labels.sh --repo OWNER/NAME`;
    - create a Tailscale federated identity for GitHub Actions WIF and add the
      `TS_CLIENT_ID` repository variable (and `TS_AUDIENCE` only for a custom
-     audience); do not create `TS_OAUTH_SECRET`;
+     audience); use the `sub` prefix printed by the smoke workflow as the
+     identity subject; do not create `TS_OAUTH_SECRET`;
    - permit `tag:ci` to reach the Aperture host on port 443 only;
    - protect `main` with a required PR and the `CI` check;
    - allow GitHub Actions to create pull requests;

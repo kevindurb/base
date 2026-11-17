@@ -29,6 +29,10 @@ inputs:
     description: Model ID that must appear in /models
     required: false
     default: deepseek-v4.1-flash
+  preflight-peer:
+    description: Tailscale peer name used to map the preflight host to its tailnet IP
+    required: false
+    default: ai
   preflight-only:
     description: Join the tailnet and check the model endpoint, then stop before installing or running the agent
     required: false
@@ -44,10 +48,6 @@ inputs:
     description: Ephemeral node tags
     required: false
     default: tag:ci
-  tailscale-ping:
-    description: Host to ping after joining
-    required: false
-    default: ai
 
 runs:
   using: composite
@@ -77,7 +77,6 @@ runs:
         oauth-client-id: ${{ inputs.tailscale-client-id }}
         audience: ${{ steps.wif.outputs.audience }}
         tags: ${{ inputs.tailscale-tags }}
-        ping: ${{ inputs.tailscale-ping }}
         version: "1.104.5"
         use-cache: "true"
 
@@ -86,8 +85,21 @@ runs:
       env:
         URL: ${{ inputs.preflight-url }}
         MODEL: ${{ inputs.preflight-model }}
+        PEER: ${{ inputs.preflight-peer }}
       run: |
         set -euo pipefail
+        # GitHub runners do not always wire MagicDNS into systemd-resolved.
+        # Map the Aperture FQDN to the peer's tailnet IP for this ephemeral job
+        # so both the preflight and the agent resolve it.
+        host=${URL#*://}
+        host=${host%%/*}
+        peer_ip=$(tailscale ip -4 "${PEER}" 2>/dev/null | head -1 || true)
+        if [[ -n ${peer_ip} ]]; then
+          echo "${peer_ip} ${host}" | sudo tee -a /etc/hosts >/dev/null
+          echo "preflight: mapped ${host} to ${peer_ip}"
+        else
+          echo "preflight: could not resolve ${PEER} through tailscaled; relying on DNS" >&2
+        fi
         for attempt in $(seq 1 12); do
           if body=$(curl -fsS --max-time 10 "${URL}/models"); then
             if jq -e --arg model "${MODEL}" '[.data[].id] | index($model) != null' <<<"${body}" >/dev/null; then
