@@ -23,7 +23,8 @@ test:
 pre-commit: fmt lint
 pre-push: build test
 
-# Base validates its own scaffolding; a real project uses `ci: pre-commit pre-push`.
+# Base validates its own scaffolding; a real project uses
+# `ci: pre-commit pre-push spec-validate`.
 ci: check-template
 
 install-hooks:

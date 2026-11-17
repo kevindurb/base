@@ -1,0 +1,246 @@
+# GitHub-native OpenSpec factory
+
+The factory turns one GitHub issue into one OpenSpec change and lands it
+through three reviewed pull requests: proposal, implementation, and archive.
+GitHub is the control plane. Humans keep every judgment: they start each
+phase, review each pull request, and merge it. The model does the mechanical
+work and never touches GitHub.
+
+```
+issue ──opsx:propose──▶ proposal PR ──merge──▶ opsx:proposal-approved
+      ──opsx:implement──▶ implementation PR ──merge──▶ opsx:impl-approved
+      ──opsx:archive──▶ archive PR ──merge──▶ issue closed, opsx:done
+```
+
+The same issue and change name, `gh<issue>-<slug>`, appear on every branch,
+pull request, and archive path. One issue maps to exactly one change; split
+anything larger before applying a command.
+
+## Setup in a repository created from this template
+
+1. **Create the repository** from the template, then run `just install-hooks`
+   once per clone.
+2. **Create the labels**:
+   ```sh
+   ./scripts/factory-labels.sh --repo OWNER/NAME
+   ```
+   The script is idempotent; `gh label create --force` updates colors and
+   descriptions.
+3. **Add the Tailscale secrets** in repository settings:
+   `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET`. The OAuth client needs the
+   `auth_keys` scope and permission for `tag:ci`. There is no model API key:
+   the Aperture endpoint is unauthenticated on the tailnet.
+4. **Restrict the CI tag in the tailnet ACL** to the Aperture host on HTTPS:
+   `tag:ci` may reach `ai` on port 443 only, with no SSH and no other tailnet
+   host. The workflows use `https://ai.beaver-cloud.ts.net/v1` and
+   `https://ai.beaver-cloud.ts.net/v1/mcp`.
+5. **Protect `main`**: require a pull request and the `CI` check before
+   merging. Do not let workflows push to `main`; the factory pushes only phase
+   branches and opens PRs.
+6. **Allow GitHub Actions to create pull requests** in the repository
+   settings. The workflows use `GITHUB_TOKEN` with `pull-requests: write`;
+   they never approve or merge.
+7. **Add `spec-validate` to `just ci`** once the project has real checks:
+   `ci: pre-commit pre-push spec-validate`. The template's own `ci` stays
+   `check-template`, because `base` has no application to build or test.
+
+The optional `openspec-janitor.yml` workflow runs daily, needs no secrets, and
+removes stale running labels.
+
+## Commands and labels
+
+Only command labels start a phase. A maintainer (write, maintain, or admin
+permission) applies one to an open issue. The phase removes the command label
+before it starts.
+
+| Label | Kind | Meaning |
+|---|---|---|
+| `opsx:propose` | command | Start planning from the issue |
+| `opsx:implement` | command | Build the approved change |
+| `opsx:archive` | command | Archive the implemented change |
+| `opsx:proposing` | running overlay | A propose run is in progress |
+| `opsx:implementing` | running overlay | An implementation run is in progress |
+| `opsx:archiving` | running overlay | An archive run is in progress |
+| `opsx:verifying` | running overlay (PR) | An advisory verification is running |
+| `opsx:revising` | running overlay (PR) | A revise run is running |
+| `opsx:proposal-review` | lifecycle | Proposal PR is open for review |
+| `opsx:proposal-approved` | lifecycle | Proposal merged; `opsx:implement` is next |
+| `opsx:impl-review` | lifecycle | Implementation PR is open for review |
+| `opsx:impl-approved` | lifecycle | Implementation merged; `opsx:archive` is next |
+| `opsx:archive-review` | lifecycle | Archive PR is open for review |
+| `opsx:done` | lifecycle | Archived and complete |
+| `opsx:blocked` | failure | The last phase stopped; read the reason before retrying |
+| `opsx:triage` | triage | The issue form's initial label, removed when a phase starts |
+
+Running labels are additive. They never replace the lifecycle label, so a
+crashed run leaves the lifecycle state visible and the overlay as an obvious
+anomaly. Every phase removes its overlay in an `if: always()` step; the
+janitor is the second line of defense.
+
+Lifecycle labels advance on merge events, never on a bot-applied command
+label. That is deliberate: GitHub suppresses workflows started by the default
+`GITHUB_TOKEN`, so a bot-applied command label would need a long-lived token.
+Merges are human events and always trigger the lifecycle workflow.
+
+## The three pull requests
+
+| Phase | Head branch | Body reference | Closes the issue? |
+|---|---|---|---|
+| Proposal | `opsx/propose-<change>` | `Refs #<issue>` | No |
+| Implementation | `opsx/impl-<change>` | `Refs #<issue>` | No |
+| Archive | `opsx/archive-<change>` | `Closes #<issue>` | Yes |
+
+**Proposal.** Creates `openspec/changes/<change>/` with every artifact the
+schema requires and nothing else. The workflow validates the change, checks
+that the diff contains only that directory, commits, pushes, and opens the
+PR. The issue moves to `opsx:proposal-review`. If the agent blocks after
+creating useful artifacts, the workflow may open a **draft** proposal PR so
+the partial work is reviewable, adds `opsx:blocked`, and never creates a second
+change.
+
+**Implementation.** Requires `opsx:proposal-approved` and exactly one active
+change for the issue. The agent edits project code and the active change,
+checks tasks only when their behavior is complete, runs `just ci`, and leaves
+the change active. The workflow validates the change, rejects any
+control-plane edits, commits, pushes, and opens the implementation PR. The
+issue moves to `opsx:impl-review`. If `just ci` fails, the branch is pushed for
+recovery but no PR is opened or updated, and the issue is `opsx:blocked`.
+
+**Archive.** Requires `opsx:impl-approved`, a merged implementation PR, an
+active change, and no open archive PR. It runs
+`openspec archive <change> --yes`, which moves the change to
+`openspec/changes/archive/<date>-<change>/` and syncs its specs, then runs
+`openspec validate --all --strict` and `openspec validate --archived --strict`.
+It commits the move and opens the archive PR whose body says `Closes #<issue>`.
+It never calls the model and never joins the tailnet. A validation failure
+opens no PR and marks the issue blocked. The issue moves to
+`opsx:archive-review`; merging closes the issue and the lifecycle workflow sets
+`opsx:done`.
+
+The archive guard looks for both `gh<issue>-*` and `*-gh<issue>-*` under
+`openspec/changes/archive/`, so an already archived change is reported by its
+real dated path and no duplicate is created.
+
+## Failure and retry
+
+A failed or blocked phase:
+
+- keeps the lifecycle label;
+- adds `opsx:blocked`;
+- posts the reason and the run link;
+- removes its running overlay.
+
+To retry, fix the cause, remove `opsx:blocked`, and re-apply the same command
+label. The guard runs again: it re-checks permissions, lifecycle state,
+duplicates, and open PRs before starting. The archive workflow's retry path
+is the same label; it does not need a new issue.
+
+The janitor removes a running overlay that no run has refreshed for 90
+minutes, comments the retry command, and adds `opsx:blocked` on issues. It
+never deletes a pull request or a commit.
+
+## Verify and revise
+
+`openspec-verify.yml` runs on implementation PRs and can also be dispatched
+with a PR number. It reads the change, the specs, and the PR diff, and posts a
+**comment-only** review. It never approves or requests changes, and it has no
+shell or GitHub write credential in the agent step. CI remains the test gate.
+Verification is advisory.
+
+`openspec-revise.yml` handles a maintainer's `/revise` comment and a
+changes-requested review. It picks the revise agent, feeds the review text in
+as untrusted data, and pushes one fix commit to the same PR branch. On a
+proposal PR its writes are limited to the change artifacts; on an
+implementation PR it may edit code and the change but never the control
+plane. Verify and revise share a `factory-pr-<number>` concurrency group with
+`cancel-in-progress: false`, so a second request waits or exits rather than
+duplicating comments or commits.
+
+## Agent boundaries
+
+The prompt is static. Everything event-specific reaches the agent through
+`.agent/context.md`, and issue, PR, review, and comment text is fenced as
+untrusted data. The agent writes `.agent/result.json` and `.agent/report.md`;
+the workflow validates the result before it publishes anything.
+
+| Phase | Agent | Writes | Shell | MCP |
+|---|---|---|---|---|
+| Propose | `openspec-propose` | Change directory and `.agent/` | `openspec`, read-only git | read-only web search and fetch |
+| Apply | `openspec-apply` | Project code and the active change | `just`, `openspec`, read-only git | none |
+| Verify | `openspec-verify` | `.agent/` only | none | read-only web search and fetch |
+| Revise | `openspec-revise` | Project code and the change | `just`, `openspec`, read-only git | none |
+
+Every agent denies by default, denies subagents and questions, and denies the
+factory control plane: `.github/`, `.opencode/`, `.agents/`, `.githooks/`, and
+`.git/`. The dangerous Aperture tools (`TailnetSSH_*`, `chrome_*`, session
+inspection, and MCP resource reads) are denied explicitly. Raw network
+clients are not in the shell allowlist, so an agent cannot bypass the MCP
+permission boundary by calling the endpoint directly. Agents have no GitHub
+token, no `gh`, and no persisted checkout credential.
+
+The result contract is:
+
+```json
+{
+  "status": "ok | blocked | failed",
+  "phase": "propose | apply | verify | revise",
+  "change": "gh<issue>-<slug>",
+  "summary": "one-line outcome",
+  "blocked_reason": "required when status is blocked",
+  "verdict": "pass | concerns (verify only)"
+}
+```
+
+A missing or invalid result is a failed phase. It never opens a PR and never
+updates one.
+
+## Configuration map
+
+| Path | Purpose |
+|---|---|
+| `.opencode/opencode.jsonc` | Aperture provider, `aperture/deepseek-v4.1-flash` limits, remote MCP without OAuth or Code Mode |
+| `.opencode/agents/openspec-*.md` | Phase prompts, step limits, deny-by-default permissions |
+| `.github/actions/openspec-agent/action.yml` | Ephemeral Tailscale node, bounded model preflight, pinned OpenCode and OpenSpec, agent run |
+| `.github/workflows/openspec-propose.yml` | Issue command, guards, proposal branch and PR |
+| `.github/workflows/openspec-apply.yml` | Implementation branch and PR, `just ci`, control-plane deny |
+| `.github/workflows/openspec-archive.yml` | Deterministic archive, validation, `Closes` PR |
+| `.github/workflows/openspec-lifecycle.yml` | Merge-driven lifecycle labels and status comment |
+| `.github/workflows/openspec-verify.yml` | Advisory, comment-only verification |
+| `.github/workflows/openspec-revise.yml` | `/revise` and changes-requested revisions |
+| `.github/workflows/openspec-janitor.yml` | Daily stale-overlay sweep |
+| `.github/ISSUE_TEMPLATE/change.yml` | One-change issue form |
+| `.github/PULL_REQUEST_TEMPLATE.md` | Three-PR reference and `Refs` reminder |
+| `scripts/factory-context.sh` | Build `.agent/context.md` with untrusted fences |
+| `scripts/factory-result.sh` | Validate the result contract |
+| `scripts/factory-status.sh` | Create or update the single status comment |
+| `scripts/factory-labels.sh` | Idempotent label setup |
+| `scripts/factory-slug.sh` | Derive `gh<issue>-<slug>` |
+
+The OpenCode binary is pinned to `2.2.5` and verified against the release's
+`SHA256SUMS`; OpenSpec is installed as `@fission-ai/openspec@2`. Every GitHub
+action is pinned to a commit SHA. Update those pins deliberately, not with a
+floating tag.
+
+## Testing
+
+`base` is a template: its `just ci` is `check-template`, so the full lifecycle
+cannot run here. Test the factory in a repository created from the template,
+with a real application and real `fmt`, `lint`, `build`, and `test` recipes.
+
+Useful local checks before pushing a factory change:
+
+```sh
+bash -n scripts/*.sh
+shellcheck scripts/*.sh
+actionlint
+openspec validate --all
+just ci
+```
+
+The propose agent can be smoke-tested locally with a hand-written
+`.agent/context.md` and an ephemeral node, or by running the same command from
+a machine already on the tailnet. If your global OpenCode configuration pins a
+different provider ID or denies other providers, allow `aperture` in that
+policy (or run the test with a clean config home); the project config defines
+`aperture/deepseek-v4.1-flash`, and CI has no global configuration to
+override it.
