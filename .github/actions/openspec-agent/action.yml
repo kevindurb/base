@@ -114,6 +114,8 @@ runs:
         fi
         echo "${peer_ip} ${host}" | sudo tee -a /etc/hosts >/dev/null
         echo "preflight: mapped ${host} to ${peer_ip}"
+        claims=$(curl -sS --max-time 10 "https://${host}/api/wif/claims" 2>/dev/null || true)
+        echo "preflight: aperture claims: ${claims:0:500}"
         payload=$(jq -n --arg model "${MODEL}" '{model:$model,messages:[{role:"user",content:"Reply with OK"}],max_tokens:1}')
         for attempt in $(seq 1 12); do
           if response=$(curl -sS --max-time 20 -w '\n%{http_code}' \
