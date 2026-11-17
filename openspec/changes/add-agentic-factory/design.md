@@ -16,8 +16,8 @@ no server, database, or long-running process. The relevant constraints are:
 - GitHub-hosted runners are ephemeral, have outbound network only, and start
   without the OpenSpec or OpenCode CLIs.
 - The Aperture host is reachable only through Tailscale, authorizes requests
-  by tailnet identity and role, and serves an OpenAI-compatible model plus an
-  MCP endpoint.
+  by tailnet identity and model/MCP grants, and serves an OpenAI-compatible
+  model plus an MCP endpoint.
 - No available third-party OpenCode action runs OpenCode V2 for general phase
   work; the factory uses its own composite action with a pinned,
   checksum-verified OpenCode binary.
@@ -173,13 +173,12 @@ before review, and a revise after that is awkward).
 
 Each workflow that needs the model joins the tailnet as an ephemeral `tag:ci`
 node using a short-lived GitHub OIDC token exchanged through a Tailscale
-federated identity (WIF), preflights the host, and checks
-`https://ai.beaver-cloud.ts.net/v1/models` with bounded retries. The phase job
-grants `id-token: write`; the agent step unsets the OIDC request variables and
-never receives a token. The provider is the OpenAI-compatible endpoint with
-declared model limits; the MCP server is remote Streamable HTTP with OAuth
-disabled and Code Mode disabled. The action is pinned by commit SHA and
-OpenCode by version.
+federated identity (WIF), then preflights the model with a one-token chat
+completion and bounded retries. The phase job grants `id-token: write`; the
+agent step unsets the OIDC request variables and never receives a token. The
+provider is the OpenAI-compatible endpoint with declared model limits; the MCP
+server is remote Streamable HTTP with OAuth disabled and Code Mode disabled.
+The action is pinned by commit SHA and OpenCode by version.
 
 Alternatives considered: a long-lived Tailscale OAuth client secret (another
 credential to rotate; WIF is short-lived and scoped to the workflow); a public
@@ -211,9 +210,9 @@ setup); copying the workflows into each project (drift).
 - **Prompt injection from issue or review text** → human merge, no auto-merge,
   no GitHub token in the agent, control-plane deny, untrusted delimiters, and
   human review of the final diff.
-- **The MCP is reachable by the CI role and includes `TailnetSSH_run_command`
+- **The MCP is reachable by the CI grant and includes `TailnetSSH_run_command`
   and Chrome** → the tailnet ACL limits `tag:ci` to the host on 443, the
-  Aperture role grants only the model and MCP endpoints, agents deny those
+  Aperture grant covers only the model and MCP endpoints, agents deny those
   tools, apply and revise get no MCP, and shell egress is denied.
 - **Five human actions may feel heavy** → the work is automated; the gates are
   the point. If it is too much later, the archive label and merge are the first

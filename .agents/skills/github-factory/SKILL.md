@@ -70,8 +70,9 @@ three pull requests: proposal, implementation, archive.
    as `GITHUB_TOKEN`, because a process that can mint an OIDC token can join
    the tailnet without the MCP permission boundary. Keep `id-token: write` on
    the phase job, not the whole workflow. The tailnet ACL only makes the host
-   reachable; Aperture must also grant `tag:ci` a role, or `/v1/models` returns
-   403 `access denied: no role granted`.
+   reachable; Aperture must grant `tag:ci` model access. `/v1/models` is
+   role-gated, so the smoke preflight uses a one-token chat completion rather
+   than the catalog.
 
 ## Where the contracts live
 

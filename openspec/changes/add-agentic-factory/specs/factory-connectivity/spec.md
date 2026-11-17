@@ -84,7 +84,7 @@ The factory SHALL provide a dispatchable smoke workflow that joins the tailnet a
 #### Scenario: Smoke run
 
 - **WHEN** a maintainer dispatches the smoke workflow
-- **THEN** it exchanges the GitHub OIDC token, joins as `tag:ci`, lists the configured model, and stops before the agent starts
+- **THEN** it exchanges the GitHub OIDC token, joins as `tag:ci`, makes a one-token completion with the configured model, and stops before the agent starts
 
 #### Scenario: Claims visible
 
@@ -115,15 +115,15 @@ The factory SHALL authenticate to Tailscale with a short-lived GitHub OIDC token
 - **WHEN** the workflow does not grant `id-token: write`
 - **THEN** the phase stops before the agent starts and reports the connectivity failure
 
-#### Scenario: Role grant
+#### Scenario: Model grant
 
-- **WHEN** Aperture grants the `tag:ci` identity a role
-- **THEN** no model API key is stored or passed
+- **WHEN** Aperture grants the `tag:ci` identity access to the configured model
+- **THEN** the preflight completion succeeds and no model API key is stored or passed
 
-#### Scenario: Missing role
+#### Scenario: Missing model access
 
-- **WHEN** the `tag:ci` identity has no Aperture role
-- **THEN** the preflight receives 403 `access denied: no role granted` and stops before the agent starts
+- **WHEN** the `tag:ci` identity lacks model access
+- **THEN** the preflight receives 403 and stops before the agent starts
 
 ### Requirement: CI access is least-privileged
 

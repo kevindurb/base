@@ -13,7 +13,7 @@
 
 ## 2. Propose workflow
 
-- [x] 2.1 Add `.github/actions/openspec-agent/action.yml` with Tailscale WIF, bounded model preflight, OpenSpec install, and the pinned OpenCode binary; add a dispatch smoke workflow; verify the smoke run exchanges the OIDC token and lists `deepseek-v4.1-flash`.
+- [x] 2.1 Add `.github/actions/openspec-agent/action.yml` with Tailscale WIF, bounded model preflight, OpenSpec install, and the pinned OpenCode binary; add a dispatch smoke workflow; verify the smoke run exchanges the OIDC token and makes a one-token completion with `deepseek-v4.1-flash`.
 - [x] 2.2 Add `openspec-propose.yml` with the command trigger, maintainer guard, duplicate guard, context build, proposal branch and PR, lifecycle label, running overlay, and status comment; verify a scratch issue produces a proposal PR containing only `openspec/changes/gh<N>-<slug>/` and passing `openspec validate`.
 - [x] 2.3 Add the propose failure paths for an unauthorized actor, a duplicate run, a missing result, and an agent-blocked result; verify each posts a reason, sets `opsx:blocked`, and leaves no `opsx:proposing` label.
 - [x] 2.4 Add a draft-PR path for partial propose work; verify a blocked run with useful artifacts leaves a draft PR and does not create a second change.
@@ -50,7 +50,7 @@
 - [x] 6.4 Update `AGENTS.md` and `README.md` so the factory is the documented default feature workflow, the PR-based deviation from direct-to-main is explicit, and the derived-repo setup lists the Tailscale WIF client ID/audience, ACL, labels, and branch protection; verify `just ci` passes in `base` and `openspec validate --all` passes.
 - [ ] 6.5 Verify the security boundaries with a scratch run: the agent has no GitHub token, no `gh`, no persisted checkout credential, no raw network client, and no dangerous MCP tool; verify each attempted escape is denied and reported.
 - [x] 6.6 Verify `just ci` in the scratch derived repository runs `fmt`, `lint`, `build`, `test`, and `spec-validate`, and that the template's `base` `ci` still runs only `check-template`.
-- [ ] 6.7 Switch Tailscale authentication to GitHub WIF: grant `id-token: write` on phase jobs, exchange the OIDC token through a federated identity, remove `TS_OAUTH_SECRET`, add the dispatch smoke workflow, and verify the smoke run lists `deepseek-v4.1-flash` without a model call.
+- [ ] 6.7 Switch Tailscale authentication to GitHub WIF: grant `id-token: write` on phase jobs, exchange the OIDC token through a federated identity, remove `TS_OAUTH_SECRET`, add the dispatch smoke workflow, and verify the smoke run completes a one-token preflight with `deepseek-v4.1-flash`.
 
 ## Workflow follow-up
 
