@@ -112,6 +112,11 @@ jobs:
     if: needs.guard.outputs.allowed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -148,8 +153,8 @@ jobs:
         uses: ./.github/actions/openspec-agent
         with:
           agent: openspec-propose
-          tailscale-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          tailscale-oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tailscale-client-id: ${{ vars.TS_CLIENT_ID }}
+          tailscale-audience: ${{ vars.TS_AUDIENCE }}
           timeout-minutes: "20"
 
       - name: Publish the proposal

@@ -41,7 +41,7 @@ The agent SHALL NOT push, merge, label, comment, or open pull requests; the work
 #### Scenario: No credentials
 
 - **WHEN** the agent runs
-- **THEN** it has no GitHub token, no `gh` command, and no persisted checkout credential
+- **THEN** it has no GitHub token, no GitHub OIDC request variables, no `gh` command, and no persisted checkout credential
 
 #### Scenario: Attempted push
 

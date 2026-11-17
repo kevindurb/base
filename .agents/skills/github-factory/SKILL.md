@@ -60,6 +60,15 @@ three pull requests: proposal, implementation, archive.
    label. The retry is the same command label after removing `opsx:blocked`.
    The guard re-runs every precondition.
 
+9. **Tailscale uses WIF, not a stored secret.** The phase job grants
+   `id-token: write`, the Tailscale step exchanges a short-lived GitHub OIDC
+   token through a federated identity, and the repository stores only the
+   non-secret client ID and audience. The agent step must unset
+   `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN` as well
+   as `GITHUB_TOKEN`, because a process that can mint an OIDC token can join
+   the tailnet without the MCP permission boundary. Keep `id-token: write` on
+   the phase job, not the whole workflow.
+
 ## Where the contracts live
 
 | Contract | File |
@@ -95,5 +104,5 @@ contain literal Markdown backticks. Do not use that exception for real shell
 bugs.
 
 The full lifecycle can only be exercised in a derived repository with a real
-application, real `just` checks, the Tailscale secrets, the ACL, and the labels.
-`base` itself validates the template scaffolding.
+application, real `just` checks, the Tailscale WIF variables, the ACL, and the
+labels. `base` itself validates the template scaffolding.

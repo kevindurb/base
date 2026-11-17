@@ -17,8 +17,9 @@ no server, database, or long-running process. The relevant constraints are:
   without the OpenSpec or OpenCode CLIs.
 - The Aperture host is reachable only through Tailscale, is unauthenticated on
   the tailnet, and serves an OpenAI-compatible model plus an MCP endpoint.
-- `opencode-action` has no release tags yet; a branch name is not a stable
-  reference.
+- No available third-party OpenCode action runs OpenCode V2 for general phase
+  work; the factory uses its own composite action with a pinned,
+  checksum-verified OpenCode binary.
 - `AGENTS.md` currently says to commit directly to `main` and land a change as
   two commits; the factory is PR-based, so that section must be updated.
 - The template's `just` stubs mean the factory cannot be exercised end to end
@@ -117,7 +118,7 @@ agent step and makes retries non-idempotent).
 
 ### 6. Static prompt plus a file-based context and result contract
 
-The `opencode-action` prompt is a fixed string that points at
+The composite action's prompt is a fixed string that points at
 `.agent/context.md`. Event data is written to that file by the workflow, with
 issue and review text fenced as untrusted. The agent writes
 `.agent/result.json` and `.agent/report.md`; the workflow validates the result
@@ -170,15 +171,20 @@ before review, and a revise after that is awkward).
 ### 10. Ephemeral Tailscale node, HTTPS, pinned action and OpenCode versions
 
 Each workflow that needs the model joins the tailnet as an ephemeral `tag:ci`
-node with a Tailscale OAuth client, pings the host, and preflights
-`https://ai.beaver-cloud.ts.net/v1/models` with bounded retries. The provider is
-the OpenAI-compatible endpoint with declared model limits; the MCP server is
-remote Streamable HTTP with OAuth disabled and Code Mode disabled. The action is
-pinned by commit SHA and OpenCode by version.
+node using a short-lived GitHub OIDC token exchanged through a Tailscale
+federated identity (WIF), pings the host, and preflights
+`https://ai.beaver-cloud.ts.net/v1/models` with bounded retries. The phase job
+grants `id-token: write`; the agent step unsets the OIDC request variables and
+never receives a token. The provider is the OpenAI-compatible endpoint with
+declared model limits; the MCP server is remote Streamable HTTP with OAuth
+disabled and Code Mode disabled. The action is pinned by commit SHA and
+OpenCode by version.
 
-Alternatives considered: a public endpoint (exposes the model and MCP); a
-self-hosted runner (operational burden); HTTP (plaintext SSE); `latest`
-(reproducibility and supply-chain risk).
+Alternatives considered: a long-lived Tailscale OAuth client secret (another
+credential to rotate; WIF is short-lived and scoped to the workflow); a public
+endpoint (exposes the model and MCP); a self-hosted runner (operational
+burden); HTTP (plaintext SSE); `latest` (reproducibility and supply-chain
+risk).
 
 ### 11. Squash merges, one commit per PR
 
@@ -222,6 +228,9 @@ setup); copying the workflows into each project (drift).
 - **`GITHUB_TOKEN` cannot trigger the next phase** → transitions use PR merge
   events; phase starts are human labels.
 - **Verification false positives** → advisory comment only; humans decide.
+- **WIF subject, audience, or `id-token: write` misconfiguration** → the
+  Tailscale action fails before the agent starts; the dispatch smoke workflow
+  surfaces the exchange and model-preflight failure without a model call.
 - **Tailscale or Aperture outage** → preflight fails fast, the phase becomes
   `opsx:blocked`, and re-applying the command retries.
 - **The template's `just` stubs block end-to-end testing in `base`** → test in a

@@ -24,6 +24,11 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      id-token: write
     outputs:
       pr: ${{ steps.guard.outputs.pr }}
       change: ${{ steps.guard.outputs.change }}
@@ -132,8 +137,8 @@ jobs:
         uses: ./.github/actions/openspec-agent
         with:
           agent: openspec-verify
-          tailscale-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          tailscale-oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tailscale-client-id: ${{ vars.TS_CLIENT_ID }}
+          tailscale-audience: ${{ vars.TS_AUDIENCE }}
           timeout-minutes: "15"
 
       - name: Publish the advisory review

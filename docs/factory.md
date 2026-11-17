@@ -26,10 +26,16 @@ anything larger before applying a command.
    ```
    The script is idempotent; `gh label create --force` updates colors and
    descriptions.
-3. **Add the Tailscale secrets** in repository settings:
-   `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET`. The OAuth client needs the
-   `auth_keys` scope and permission for `tag:ci`. There is no model API key:
-   the Aperture endpoint is unauthenticated on the tailnet.
+3. **Create a Tailscale federated identity** for GitHub Actions WIF. In the
+   Tailscale admin console, open **Trust credentials → Credential → OpenID
+   Connect**, choose the GitHub Actions issuer (`https://token.actions.githubusercontent.com`),
+   set the subject to `repo:OWNER/NAME:*`, grant the `auth_keys` scope, and
+   allow `tag:ci`. Copy the **Client ID** and **Audience**. Then add the
+   repository variable `TS_CLIENT_ID`; add `TS_AUDIENCE` only if your identity
+   uses a custom audience (otherwise the action derives
+   `api.tailscale.com/<client-id>`). These values are not secrets. Do not create
+   `TS_OAUTH_SECRET`; delete it if it exists. There is no model API key: the
+   Aperture endpoint is unauthenticated on the tailnet.
 4. **Restrict the CI tag in the tailnet ACL** to the Aperture host on HTTPS:
    `tag:ci` may reach `ai` on port 443 only, with no SSH and no other tailnet
    host. The workflows use `https://ai.beaver-cloud.ts.net/v1` and
@@ -40,12 +46,48 @@ anything larger before applying a command.
 6. **Allow GitHub Actions to create pull requests** in the repository
    settings. The workflows use `GITHUB_TOKEN` with `pull-requests: write`;
    they never approve or merge.
-7. **Add `spec-validate` to `just ci`** once the project has real checks:
+7. **Run the smoke workflow** (`Actions → OpenSpec smoke → Run workflow`). It
+   exchanges the GitHub OIDC token for a short-lived Tailscale credential,
+   joins as `tag:ci`, checks that `/v1/models` lists `deepseek-v4.1-flash`, and
+   stops before a model call. Fix the federated identity before starting a
+   real propose run if the smoke job fails.
+8. **Add `spec-validate` to `just ci`** once the project has real checks:
    `ci: pre-commit pre-push spec-validate`. The template's own `ci` stays
    `check-template`, because `base` has no application to build or test.
 
 The optional `openspec-janitor.yml` workflow runs daily, needs no secrets, and
 removes stale running labels.
+
+### Tailscale WIF configuration
+
+The phase jobs grant `id-token: write`; the agent step unsets
+`ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN`, so the
+model never receives the OIDC request variables. The Tailscale step uses the
+federated identity client ID and audience, exchanges the OIDC token, and
+creates an ephemeral node.
+
+The same identity can be created with the Tailscale Terraform provider:
+
+```hcl
+resource "tailscale_federated_identity" "factory" {
+  description = "GitHub Actions OpenSpec factory"
+  scopes      = ["auth_keys"]
+  tags        = ["tag:ci"]
+  issuer      = "https://token.actions.githubusercontent.com"
+  subject     = "repo:OWNER/NAME:*"
+}
+```
+
+The `repo:OWNER/NAME:*` subject covers default-branch runs (`issues`,
+`issue_comment`, `workflow_dispatch`) and `pull_request` runs. For a tighter
+policy, use two identities with subjects
+`repo:OWNER/NAME:ref:refs/heads/main` and `repo:OWNER/NAME:pull_request`, and
+give each one its own client ID. A custom claim matching `repository` can be
+added as defense in depth.
+
+If your global OpenCode configuration pins a different provider ID or denies
+other providers, allow `aperture` in that policy before running the propose
+agent locally; CI has no global configuration to override the project config.
 
 ## Commands and labels
 
@@ -176,7 +218,9 @@ factory control plane: `.github/`, `.opencode/`, `.agents/`, `.githooks/`, and
 inspection, and MCP resource reads) are denied explicitly. Raw network
 clients are not in the shell allowlist, so an agent cannot bypass the MCP
 permission boundary by calling the endpoint directly. Agents have no GitHub
-token, no `gh`, and no persisted checkout credential.
+token, no `gh`, and no persisted checkout credential. The agent step also
+unsets the GitHub OIDC request variables, so it cannot mint or exchange a
+token even though the surrounding phase job has `id-token: write`.
 
 The result contract is:
 
@@ -208,6 +252,7 @@ updates one.
 | `.github/workflows/openspec-verify.yml` | Advisory, comment-only verification |
 | `.github/workflows/openspec-revise.yml` | `/revise` and changes-requested revisions |
 | `.github/workflows/openspec-janitor.yml` | Daily stale-overlay sweep |
+| `.github/workflows/openspec-smoke.yml` | Dispatchable WIF and model-endpoint preflight |
 | `.github/ISSUE_TEMPLATE/change.yml` | One-change issue form |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Three-PR reference and `Refs` reminder |
 | `scripts/factory-context.sh` | Build `.agent/context.md` with untrusted fences |
@@ -236,6 +281,11 @@ actionlint
 openspec validate --all
 just ci
 ```
+
+After the WIF setup, run the **OpenSpec smoke** workflow. It exchanges the
+OIDC token, joins as `tag:ci`, checks `/v1/models`, and stops before installing
+or running the agent. A failure there is a federated identity, audience, or
+variable problem, not a model problem.
 
 The propose agent can be smoke-tested locally with a hand-written
 `.agent/context.md` and an ephemeral node, or by running the same command from

@@ -13,10 +13,11 @@ proposal PR is the spec gate, an implementation PR is the code gate, and an
 archive PR closes the loop. Humans keep the judgment — review and merge — while
 the mechanical work becomes repeatable and auditable.
 
-This is possible now because OpenSpec 2.0, OpenCode V2, and the
-`opencode-action` exist, and the Aperture host on the tailnet provides a model
-and MCP endpoint without per-run API keys. The template should carry this as
-the default for new repositories instead of each project rebuilding it.
+This is possible now because OpenSpec 2.0 and OpenCode V2 exist, the factory's
+own composite action can pin a checksum-verified OpenCode binary, and the
+Aperture host on the tailnet provides a model and MCP endpoint without per-run
+API keys. The template should carry this as the default for new repositories
+instead of each project rebuilding it.
 
 ## What Changes
 
@@ -40,7 +41,8 @@ the default for new repositories instead of each project rebuilding it.
 - Add an advisory verify agent on implementation PRs and a revise path that
   feeds review comments back to the appropriate phase agent.
 - Connect CI to the private Aperture endpoint through an ephemeral Tailscale
-  node: `deepseek-v4.1-flash` at `https://ai.beaver-cloud.ts.net/v1`, MCP at
+  node joined with a GitHub OIDC token exchanged through a federated identity:
+  `deepseek-v4.1-flash` at `https://ai.beaver-cloud.ts.net/v1`, MCP at
   `/v1/mcp`, with dangerous MCP tools denied.
 - Add the supporting contracts: issue template, label setup, status comment,
   failure/retry behavior, docs, and a durable `.agents/skills` convention.
@@ -82,11 +84,13 @@ None. The project has no existing specs; this is a new set of capabilities.
   `docs/`, and an entry in `.agents/skills/`.
 - Updates to `AGENTS.md` and `README.md`; derived repos add `spec-validate` to
   `just ci` and adopt branch protection.
-- New repository secrets: `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET`. No model
+- New repository configuration for Tailscale WIF: the federated identity
+  client ID and, when the generated audience is not used, its audience. The
+  phase jobs grant `id-token: write`; no long-lived Tailscale secret or model
   API key is required while the Aperture endpoint is tailnet-only and
   unauthenticated.
-- New CI dependencies: the OpenSpec CLI, a pinned OpenCode version, and the
-  pinned `opencode-action`. The template's application `just` stubs remain
-  unchanged until a derived project fills them in.
+- New CI dependencies: the OpenSpec CLI and a pinned OpenCode binary, installed
+  by the repository's own composite action. The template's application `just`
+  stubs remain unchanged until a derived project fills them in.
 - No application code changes and no runtime service; the factory is entirely
   GitHub Actions, repository configuration, and OpenSpec artifacts.

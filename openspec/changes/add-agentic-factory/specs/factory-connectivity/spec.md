@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines how the factory reaches the private Aperture model and MCP endpoints through an ephemeral Tailscale node, and the constraints that keep that access reproducible and least-privileged.
+Defines how the factory reaches the private Aperture model and MCP endpoints through an ephemeral Tailscale node joined with GitHub WIF, and the constraints that keep that access reproducible and least-privileged.
 
 ## ADDED Requirements
 
@@ -13,7 +13,12 @@ The factory SHALL join the tailnet as an ephemeral node tagged `tag:ci` before a
 #### Scenario: Connection
 
 - **WHEN** a phase that needs the model or MCP starts
-- **THEN** the workflow connects with an OAuth client and `tag:ci`, and the node is ephemeral
+- **THEN** the workflow exchanges a GitHub OIDC token through a Tailscale federated identity, joins as `tag:ci`, and the node is ephemeral
+
+#### Scenario: Short-lived credential
+
+- **WHEN** the workflow requests the tailnet connection
+- **THEN** it uses a short-lived token derived from the OIDC exchange and stores no long-lived Tailscale credential
 
 #### Scenario: Model-free phase
 
@@ -72,14 +77,33 @@ The factory SHALL verify model reachability before starting an agent and SHALL s
 - **WHEN** the tailnet peer is not immediately reachable
 - **THEN** the preflight retries for a bounded period
 
+### Requirement: WIF setup is verifiable before a phase
+
+The factory SHALL provide a dispatchable smoke workflow that joins the tailnet and checks the model endpoint without invoking the model.
+
+#### Scenario: Smoke run
+
+- **WHEN** a maintainer dispatches the smoke workflow
+- **THEN** it exchanges the GitHub OIDC token, joins as `tag:ci`, lists the configured model, and stops before the agent starts
+
 ### Requirement: Credentials are isolated from the agent
 
-The factory SHALL read Tailscale credentials from repository secrets and SHALL NOT expose them to the agent step.
+The factory SHALL authenticate to Tailscale with a short-lived GitHub OIDC token exchanged through a federated identity and SHALL NOT store a long-lived Tailscale credential. It SHALL NOT expose the OIDC request variables or the federated identity configuration to the agent step.
 
-#### Scenario: Secret scope
+#### Scenario: Agent environment
 
 - **WHEN** the agent runs
-- **THEN** `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET` are not present in its environment
+- **THEN** `ACTIONS_ID_TOKEN_REQUEST_URL`, `ACTIONS_ID_TOKEN_REQUEST_TOKEN`, `TS_CLIENT_ID`, and `TS_AUDIENCE` are not present in its environment
+
+#### Scenario: No long-lived secret
+
+- **WHEN** the repository is configured
+- **THEN** no `TS_OAUTH_SECRET` and no long-lived Tailscale auth key are stored
+
+#### Scenario: Missing permission
+
+- **WHEN** the workflow does not grant `id-token: write`
+- **THEN** the phase stops before the agent starts and reports the connectivity failure
 
 #### Scenario: No model key
 

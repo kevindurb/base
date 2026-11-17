@@ -22,7 +22,7 @@ template. See [`docs/factory.md`](docs/factory.md).
 | `openspec/` | Spec-driven change artifacts (`proposal → specs → design → tasks`). |
 | `.opencode/` | OpenSpec commands, skills, the Aperture provider, and the four phase agents. |
 | `.github/workflows/ci.yml` | Runs `just ci` and `openspec validate --all`. |
-| `.github/workflows/openspec-*.yml` | The factory: propose, apply, archive, lifecycle, verify, revise, janitor. |
+| `.github/workflows/openspec-*.yml` | The factory: propose, apply, archive, lifecycle, verify, revise, janitor, smoke. |
 | `.github/actions/openspec-agent/` | Tailnet, preflight, pinned OpenCode, and one phase agent. |
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | One-change issue form and the three-PR reference. |
 | `scripts/factory-*.sh` | Context, result, status, labels, and change-name helpers. |
@@ -45,10 +45,14 @@ template. See [`docs/factory.md`](docs/factory.md).
    recipe.
 7. Set up the factory, following `docs/factory.md`:
    - run `scripts/factory-labels.sh --repo OWNER/NAME`;
-   - add the `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET` repository secrets;
+   - create a Tailscale federated identity for GitHub Actions WIF and add the
+     `TS_CLIENT_ID` repository variable (and `TS_AUDIENCE` only for a custom
+     audience); do not create `TS_OAUTH_SECRET`;
    - permit `tag:ci` to reach the Aperture host on port 443 only;
    - protect `main` with a required PR and the `CI` check;
-   - allow GitHub Actions to create pull requests.
+   - allow GitHub Actions to create pull requests;
+   - run the **OpenSpec smoke** workflow to verify the OIDC exchange and model
+     preflight.
    The factory is opt-in for an existing repository; a new repository from the
    template inherits the files but still needs these settings.
 8. Rewrite this README and add project docs under `docs/`.

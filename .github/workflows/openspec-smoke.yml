@@ -1,0 +1,28 @@
+name: OpenSpec smoke
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: factory-smoke
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Join the tailnet and check the model endpoint
+        uses: ./.github/actions/openspec-agent
+        with:
+          agent: openspec-verify
+          preflight-only: "true"
+          tailscale-client-id: ${{ vars.TS_CLIENT_ID }}
+          tailscale-audience: ${{ vars.TS_AUDIENCE }}
