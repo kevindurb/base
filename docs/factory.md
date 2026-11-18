@@ -199,10 +199,11 @@ checks tasks only when their behavior is complete, runs `just ci`, and leaves
 the change active. The workflow validates the change, rejects any
 control-plane edits, commits, pushes, and opens the implementation PR. The
 issue moves to `opsx:impl-review`. If the agent checks no task in
-`tasks.md`, or `just ci` fails, the branch is pushed for recovery but no PR is
-opened or updated, and the issue is `opsx:blocked`. A task that needs a manual
-reviewer check may stay unchecked and be named in the report; the PR is the
-review surface, and that task must be completed before archive.
+`tasks.md`, blocks after producing useful non-control-plane code, or `just ci`
+fails, the branch is pushed for recovery but no PR is opened or updated, and
+the issue is `opsx:blocked`. A task that needs a manual reviewer check may stay
+unchecked and be named in the report; the PR is the review surface, and that
+task must be completed before archive.
 
 **Archive.** Requires `opsx:impl-approved`, a merged implementation PR, an
 active change, and no open archive PR. It runs
