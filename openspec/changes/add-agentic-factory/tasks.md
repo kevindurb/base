@@ -53,6 +53,7 @@
 - [x] 6.7 Switch Tailscale authentication to GitHub WIF: grant `id-token: write` on phase jobs, exchange the OIDC token through a federated identity, remove `TS_OAUTH_SECRET`, add the dispatch smoke workflow, and verify the smoke run completes a one-token preflight with `deepseek-v4.1-flash`.
 - [x] 6.8 Separate the propose/apply/archive concurrency groups by phase and grant `actions: write` for cache writes; verify a command label does not cancel the matching run when the other phase workflows are skipped.
 - [ ] 6.9 Make exploratory shell denials non-fatal in the phase prompts and normalize a reused proposal PR title; verify a retry does not block on `ls`/`find`.
+- [ ] 6.10 Install `just` in the composite action and make the apply task-progress check diff-based while pushing the branch on failure; verify an apply retry opens the implementation PR.
 
 ## Workflow follow-up
 

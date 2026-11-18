@@ -114,6 +114,11 @@ The factory SHALL restrict shell commands to the phase's needs and SHALL deny ra
 - **WHEN** the apply or revise agent runs
 - **THEN** it may run `just` and `openspec` commands but not raw network clients or GitHub commands
 
+#### Scenario: Tool availability
+
+- **WHEN** the apply or revise agent starts
+- **THEN** `just` and `openspec` are installed and on PATH
+
 #### Scenario: File discovery
 
 - **WHEN** an agent needs to inspect files

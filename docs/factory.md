@@ -198,8 +198,9 @@ change for the issue. The agent edits project code and the active change,
 checks tasks only when their behavior is complete, runs `just ci`, and leaves
 the change active. The workflow validates the change, rejects any
 control-plane edits, commits, pushes, and opens the implementation PR. The
-issue moves to `opsx:impl-review`. If `just ci` fails, the branch is pushed for
-recovery but no PR is opened or updated, and the issue is `opsx:blocked`.
+issue moves to `opsx:impl-review`. If the agent checks no task in
+`tasks.md`, or `just ci` fails, the branch is pushed for recovery but no PR is
+opened or updated, and the issue is `opsx:blocked`.
 
 **Archive.** Requires `opsx:impl-approved`, a merged implementation PR, an
 active change, and no open archive PR. It runs
@@ -297,7 +298,7 @@ updates one.
 |---|---|
 | `.opencode/opencode.jsonc` | Aperture provider, `aperture/deepseek-v4.1-flash` limits, remote MCP without OAuth or Code Mode |
 | `.opencode/agents/openspec-*.md` | Phase prompts, step limits, deny-by-default permissions |
-| `.github/actions/openspec-agent/action.yml` | Ephemeral Tailscale node, bounded model preflight, pinned OpenCode and OpenSpec, agent run |
+| `.github/actions/openspec-agent/action.yml` | Ephemeral Tailscale node, bounded model preflight, pinned OpenCode, OpenSpec, and just, agent run |
 | `.github/workflows/openspec-propose.yml` | Issue command, guards, proposal branch and PR |
 | `.github/workflows/openspec-apply.yml` | Implementation branch and PR, `just ci`, control-plane deny |
 | `.github/workflows/openspec-archive.yml` | Deterministic archive, validation, `Closes` PR |
