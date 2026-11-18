@@ -123,6 +123,11 @@ The factory SHALL mark a failed or blocked phase with `opsx:blocked`, post the r
 - **WHEN** an agent cannot complete its phase
 - **THEN** the factory posts the blocking reason and adds `opsx:blocked`
 
+#### Scenario: Work in progress is preserved
+
+- **WHEN** a phase blocks after the agent produced non-control-plane changes, whether the agent reported `blocked` or the workflow rejected an `ok` result
+- **THEN** the factory pushes the phase branch so the work survives the failed run
+
 #### Scenario: Retry
 
 - **WHEN** a maintainer removes `opsx:blocked` and re-applies the command label
