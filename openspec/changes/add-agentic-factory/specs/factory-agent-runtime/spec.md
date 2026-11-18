@@ -67,6 +67,11 @@ Each agent SHALL write `.agent/result.json` with `status`, `phase`, `change`, an
 - **WHEN** the agent cannot proceed
 - **THEN** `status` is `blocked` and `blocked_reason` names the missing input or decision
 
+#### Scenario: Manual reviewer check
+
+- **WHEN** the only remaining verification requires a human reviewer
+- **THEN** the agent leaves that task unchecked, names it in the report, and reports `ok` so the implementation PR can be reviewed
+
 ### Requirement: Write scopes match the phase
 
 Each phase SHALL have a write scope limited to what it needs, and the factory control plane SHALL be read-only to every agent.
