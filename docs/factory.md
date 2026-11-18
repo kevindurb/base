@@ -78,7 +78,10 @@ anything larger before applying a command.
    branches and opens PRs.
 6. **Allow GitHub Actions to create pull requests** in the repository
    settings. The workflows use `GITHUB_TOKEN` with `pull-requests: write`;
-   they never approve or merge.
+   they never approve or merge. If the repository requires approval for
+   first-time contributors, the bot's first PR workflow runs appear as
+   `action_required`; approve them once or relax that setting for the
+   repository. The factory's PRs are authored by `github-actions[bot]`.
 7. **Run the smoke workflow** (`Actions → OpenSpec smoke → Run workflow`). It
    prints the non-secret `iss`, `aud`, `sub`, `repository`, `ref`,
    `event_name`, and `workflow` claims, exchanges the GitHub OIDC token for a
@@ -168,6 +171,11 @@ Lifecycle labels advance on merge events, never on a bot-applied command
 label. That is deliberate: GitHub suppresses workflows started by the default
 `GITHUB_TOKEN`, so a bot-applied command label would need a long-lived token.
 Merges are human events and always trigger the lifecycle workflow.
+
+A command label triggers the propose, apply, and archive workflows. The
+non-matching workflows are skipped; each phase has its own concurrency group,
+so a skipped run cannot cancel the matching phase. Applying the same command
+again while its phase is running waits or exits without duplicating it.
 
 ## The three pull requests
 

@@ -5,7 +5,7 @@ on:
     types: [labeled]
 
 concurrency:
-  group: factory-issue-${{ github.event.issue.number }}
+  group: factory-propose-${{ github.event.issue.number }}
   cancel-in-progress: false
 
 permissions:
@@ -116,6 +116,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      actions: write
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -225,7 +226,7 @@ jobs:
 
               pr=$(gh pr list --repo "$REPO" --state open --head "$branch" --json number --jq '.[0].number // empty')
               if [[ -n $pr ]]; then
-                gh pr edit "$pr" --repo "$REPO" --body-file /tmp/proposal-body.md
+                gh pr edit "$pr" --repo "$REPO" --title "${CHANGE}: proposal" --body-file /tmp/proposal-body.md
                 gh pr ready "$pr" --repo "$REPO" >/dev/null 2>&1 || true
               else
                 pr=$(gh pr create --repo "$REPO" --base main --head "$branch" \

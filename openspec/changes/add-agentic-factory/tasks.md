@@ -51,6 +51,8 @@
 - [ ] 6.5 Verify the security boundaries with a scratch run: the agent has no GitHub token, no `gh`, no persisted checkout credential, no raw network client, and no dangerous MCP tool; verify each attempted escape is denied and reported.
 - [x] 6.6 Verify `just ci` in the scratch derived repository runs `fmt`, `lint`, `build`, `test`, and `spec-validate`, and that the template's `base` `ci` still runs only `check-template`.
 - [x] 6.7 Switch Tailscale authentication to GitHub WIF: grant `id-token: write` on phase jobs, exchange the OIDC token through a federated identity, remove `TS_OAUTH_SECRET`, add the dispatch smoke workflow, and verify the smoke run completes a one-token preflight with `deepseek-v4.1-flash`.
+- [x] 6.8 Separate the propose/apply/archive concurrency groups by phase and grant `actions: write` for cache writes; verify a command label does not cancel the matching run when the other phase workflows are skipped.
+- [ ] 6.9 Make exploratory shell denials non-fatal in the phase prompts and normalize a reused proposal PR title; verify a retry does not block on `ls`/`find`.
 
 ## Workflow follow-up
 

@@ -114,6 +114,11 @@ The factory SHALL restrict shell commands to the phase's needs and SHALL deny ra
 - **WHEN** the apply or revise agent runs
 - **THEN** it may run `just` and `openspec` commands but not raw network clients or GitHub commands
 
+#### Scenario: File discovery
+
+- **WHEN** an agent needs to inspect files
+- **THEN** it uses the read, glob, and grep tools rather than shell filesystem commands, and an exploratory shell denial does not block the phase
+
 #### Scenario: Verify shell
 
 - **WHEN** the verify agent runs

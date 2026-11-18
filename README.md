@@ -53,7 +53,8 @@ template. See [`docs/factory.md`](docs/factory.md).
      Aperture `role: user` and model capability (and the read-only MCP web
      connectors if used);
    - protect `main` with a required PR and the `CI` check;
-   - allow GitHub Actions to create pull requests;
+   - allow GitHub Actions to create pull requests and approve the bot's first
+     PR checks (or relax the first-time-contributor approval setting);
    - run the **OpenSpec smoke** workflow to verify the OIDC exchange and model
      preflight.
    The factory is opt-in for an existing repository; a new repository from the
